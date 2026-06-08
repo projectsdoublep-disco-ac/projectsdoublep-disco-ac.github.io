@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Session</title>
+<title>disco</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
     :root {
@@ -13,6 +13,7 @@
         --highlight: #222;
         --watermark: rgba(255, 255, 255, 0.03);
         --alert: #b00000;
+        --warning: #ca8a04;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     body {
@@ -26,6 +27,7 @@
         position: relative;
         user-select: none;
         -webkit-user-select: none;
+        touch-action: none; /* Prevents scrolling/swiping */
     }
 
     /* Security Watermarks */
@@ -255,9 +257,38 @@
         background: #00ff00;
         box-shadow: 0 0 5px #00ff00;
     }
+
+    /* Session Warning Banner */
+    .session-warning {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: rgba(202, 138, 4, 0.1);
+        border-bottom: 1px solid var(--warning);
+        padding: 10px;
+        text-align: center;
+        z-index: 10000;
+        backdrop-filter: blur(5px);
+    }
+
+    .session-warning-text {
+        color: var(--warning);
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
 </style>
 </head>
 <body>
+
+<!-- Session Warning Banner -->
+<div class="session-warning">
+    <div class="session-warning-text">
+        <i class="fa-solid fa-clock"></i> Temporary Session - Any Interaction Will Terminate Access
+    </div>
+</div>
 
 <!-- Security Layers -->
 <div class="watermark-overlay"></div>
@@ -319,6 +350,7 @@
     let audioContext = null;
     let sourceNode = null;
     let analyser = null;
+    let hasPlayedOnce = false;
 
     // --- Fake Log Generator ---
     const logMessages = [
@@ -329,8 +361,9 @@
         "DRM Check: Passed",
         "Watermark injection: Active",
         "Monitoring for screen capture APIs...",
-        "Connection secured via disco.ac private network"
-    ];
+        "Connection secured via disco.ac private network",
+        "WARNING: Session will terminate on any interaction"
+    };
 
     function addLog(msg, isError = false) {
         const div = document.createElement('div');
@@ -344,56 +377,59 @@
     }
 
     // Initialize logs
-    logMessages.forEach(msg => setTimeout(() => addLog(msg), Math.random() * 2000));
+    logMessages.forEach(msg => setTimeout(() => addLog(msg), Math.random * 2000));
+
+    // --- SECURITY: BOOT FUNCTION ---
+    function bootUser() {
+        addLog("SECURITY BREACH DETECTED. TERMINATING SESSION.", true);
+        // Redirect to Google
+        window.location.href = "https://www.google.com";
+    }
 
     // --- Security Measures ---
     
     // Disable Right Click
     document.addEventListener('contextmenu', event => {
         event.preventDefault();
-        addLog("Unauthorized context menu attempt detected.", true);
-        stopAudio();
+        bootUser();
     });
 
     // Disable Key Shortcuts (Ctrl+C, Ctrl+U, etc)
     document.addEventListener('keydown', event => {
-        if (
-            event.ctrlKey && (event.key === 'c' || event.key === 'u' || event.key === 's') ||
-            event.key === 'F12' ||
-            event.ctrlKey && event.shiftKey && event.key === 'I'
-        ) {
-            event.preventDefault();
-            addLog(`Key interception: ${event.key}`, true);
-            stopAudio();
-        }
+        bootUser();
     });
 
-    // Disable Touch/Mouse Actions that look like recording attempts
-    document.addEventListener('touchstart', () => {
-        // If they touch the screen while playing, assume they might be recording
-        if(isPlaying) {
-            addLog("Touch interaction detected during playback. Stopping stream.", true);
-            stopAudio();
+    // Disable Touch/Mouse Actions (Any click boots)
+    document.addEventListener('click', event => {
+        // Allow the play button to work ONLY if it's the first click and directly on the play button
+        if (event.target.closest('#play-btn') && !hasPlayedOnce) {
+            // Let the play button handler run first
+            return;
         }
+        bootUser();
+    });
+
+    document.addEventListener('touchstart', event => {
+        if (event.target.closest('#play-btn') && !hasPlayedOnce) {
+            return;
+        }
+        bootUser();
     }, { passive: false });
+
+    document.addEventListener('mousedown', event => {
+        if (event.target.closest('#play-btn') && !hasPlayedOnce) {
+            return;
+        }
+        bootUser();
+    });
+
+    // Prevent default drag behaviors
+    window.ondragstart = function() { return false; }
 
     // Detect Screen Recording (Basic API check)
     if (navigator.getDisplayMedia) {
-        // This is a simulation of detection logic
-        // Real detection is hard without DRM, but we simulate the "Leaked" vibe
         addLog("Screen sharing API monitored.");
-    }
-
-    function stopAudio() {
-        if (audio) {
-            audio.pause();
-            audio.currentTime = 0;
-        }
-        isPlaying = false;
-        updateUI();
-        securityStatus.classList.remove('active');
-        securityText.textContent = "STREAM INTERRUPTED";
-        securityText.style.color = "#b00000";
+        // Note: Actual detection of screen recording is limited in browsers without DRM
     }
 
     // --- Audio Logic ---
@@ -417,7 +453,7 @@
             securityStatus.classList.add('active');
             securityText.textContent = "STREAMING SECURELY";
             securityText.style.color = "#00ff00";
-            addLog("Audio stream active.");
+            addLog("Audio stream active. Do not interact.");
         } else {
             playIcon.classList.remove('fa-pause');
             playIcon.classList.add('fa-play');
@@ -425,12 +461,13 @@
         }
     }
 
-    playBtn.addEventListener('click', () => {
+    playBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent the document click handler from firing
         if (isPlaying) {
             audio.pause();
             isPlaying = false;
             updateUI();
-            addLog("Playback paused by user.");
+            addLog("Playback paused.");
         } else {
             // Browser policy requires user interaction first
             initAudioContext();
@@ -440,8 +477,9 @@
 
             audio.play().then(() => {
                 isPlaying = true;
+                hasPlayedOnce = true; // After this, any click boots
                 updateUI();
-                addLog("Playback started.");
+                addLog("Playback started. Session active.");
             }).catch(e => {
                 addLog("Playback failed: " + e.message, true);
             });
@@ -451,16 +489,19 @@
     audio.addEventListener('ended', () => {
         isPlaying = false;
         updateUI();
-        addLog("Stream ended.");
+        addLog("Stream ended. Terminating session.", true);
+        bootUser();
     });
 
     audio.addEventListener('error', (e) => {
         addLog("Audio source error. File may be removed.", true);
-        stopAudio();
+        bootUser();
     });
 
-    // Prevent default drag behaviors
-    window.ondragstart = function() { return false; }
+    // Handle audio ending
+    audio.onended = function() {
+        bootUser();
+    };
 
 </script>
 </body>
