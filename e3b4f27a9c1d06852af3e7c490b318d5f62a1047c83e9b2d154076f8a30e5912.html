@@ -321,8 +321,7 @@
     </div>
 </div>
 
-<div class="log-terminal" id="log-terminal">
-    </div>
+<div class="log-terminal" id="log-terminal"></div>
 
 <div class="footer-brand">
     disco.ac // Double P Records // Internal Use Only
@@ -333,7 +332,6 @@
 </audio>
 
 <script>
-    // --- Security & Anti-Tamper Configuration ---
     const audio = document.getElementById('audio-player');
     const playBtn = document.getElementById('play-btn');
     const playIcon = document.getElementById('play-icon');
@@ -343,15 +341,9 @@
     const securityText = document.getElementById('security-text');
 
     let isPlaying = false;
-    let audioContext = null;
-    let sourceNode = null;
-    let analyser = null;
     let hasPlayedOnce = false;
-
-    // Device motion sensitivity threshold (tweak if too sensitive/loose)
     const MOVEMENT_THRESHOLD = 1.5;
 
-    // --- Fake Log Generator ---
     const logMessages = [
         "Initializing secure stream...",
         "Verifying user credentials...",
@@ -375,18 +367,14 @@
         }
     }
 
-    // Initialize logs
     logMessages.forEach((msg, idx) => setTimeout(() => addLog(msg), idx * 300));
 
-    // --- SECURITY: BOOT FUNCTION ---
     function bootUser() {
         addLog("SECURITY BREACH DETECTED. TERMINATING SESSION.", true);
         removeSecurityListeners();
-        // Redirect away
         window.location.href = "https://www.google.com";
     }
 
-    // --- Movement Handlers ---
     const onDeviceMove = (event) => {
         const { beta, gamma } = event;
         if (beta === null || gamma === null) return;
@@ -400,7 +388,6 @@
     const onMouseMove = () => { addLog("Mouse movement detected.", true); bootUser(); };
 
     function addSecurityListeners() {
-        // Subtle delay window so user interaction with play button settles down
         setTimeout(() => {
             if (!isPlaying) return;
             window.addEventListener('deviceorientation', onDeviceMove);
@@ -414,24 +401,19 @@
         window.removeEventListener('touchmove', onTouchMove);
         window.removeEventListener('mousemove', onMouseMove);
     }
-
-    // --- Dynamic Security Rules ---
     
-    // Disable Right Click
     document.addEventListener('contextmenu', event => {
         event.preventDefault();
         bootUser();
     });
 
-    // Disable Key Shortcuts
     document.addEventListener('keydown', event => {
         bootUser();
     });
 
-    // Universal Global Interaction Checks
     const checkInteractionAndBoot = (event) => {
         if (event.target.closest('#play-btn') && !hasPlayedOnce) {
-            return; // Let play handle it
+            return;
         }
         bootUser();
     };
@@ -440,7 +422,6 @@
     document.addEventListener('touchstart', checkInteractionAndBoot, { passive: false });
     document.addEventListener('mousedown', checkInteractionAndBoot);
 
-    // Tab Out/Minimize check
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
             addLog("App minimization/backgrounding detected.", true);
@@ -449,19 +430,6 @@
     });
 
     window.ondragstart = function() { return false; }
-
-    // --- Audio Control & Permissions Activation ---
-
-    function initAudioContext() {
-        if (!audioContext) {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            sourceNode = audioContext.createMediaElementSource(audio);
-            analyser = audioContext.createAnalyser();
-            sourceNode.connect(analyser);
-            analyser.connect(audioContext.destination);
-            analyser.fftSize = 256;
-        }
-    }
 
     function updateUI() {
         if (isPlaying) {
@@ -489,7 +457,6 @@
             addLog("Playback paused.");
             removeSecurityListeners();
         } else {
-            // Check & request Device Orientation permission explicitly for mobile (iOS)
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                 try {
                     const permissionState = await DeviceOrientationEvent.requestPermission();
@@ -504,11 +471,6 @@
                 }
             }
 
-            initAudioContext();
-            if (audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
-
             audio.play().then(() => {
                 isPlaying = true;
                 hasPlayedOnce = true;
@@ -521,7 +483,6 @@
         }
     });
 
-    // Core Request: Trigger direct exit as soon as audio file finishes naturally
     audio.addEventListener('ended', () => {
         isPlaying = false;
         updateUI();
