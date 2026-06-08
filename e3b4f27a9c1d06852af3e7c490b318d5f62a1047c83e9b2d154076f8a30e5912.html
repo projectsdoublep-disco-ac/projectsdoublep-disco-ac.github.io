@@ -1,243 +1,467 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal Secure Media Session</title>
-    <style>
-        :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --accent-green: #10b981;
-            --accent-red: #ef4444;
-            --btn-bg: #3b82f6;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Session</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    :root {
+        --bg: #050505;
+        --text: #ffffff;
+        --accent: #1a1a1a;
+        --highlight: #222;
+        --watermark: rgba(255, 255, 255, 0.03);
+        --alert: #b00000;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: var(--bg);
+        color: var(--text);
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        user-select: none;
+        -webkit-user-select: none;
+    }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
-        }
+    /* Security Watermarks */
+    .watermark-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none;
+        z-index: 9999;
+        background-image: 
+            linear-gradient(45deg, var(--watermark) 25%, transparent 25%, transparent 75%, var(--watermark) 75%, var(--watermark)),
+            linear-gradient(45deg, var(--watermark) 25%, transparent 25%, transparent 75%, var(--watermark) 75%, var(--watermark));
+        background-size: 60px 60px;
+        background-position: 0 0, 30px 30px;
+    }
+    .confidential-stamp {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-45deg);
+        font-size: 80px;
+        font-weight: 900;
+        color: rgba(255, 0, 0, 0.05);
+        z-index: 9998;
+        pointer-events: none;
+        border: 5px solid rgba(255, 0, 0, 0.05);
+        padding: 20px;
+        text-transform: uppercase;
+    }
 
-        .container {
-            width: 100%;
-            max-width: 480px;
-            background: var(--card-bg);
-            padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-            text-align: center;
-        }
+    /* Main Layout */
+    .player-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        z-index: 1;
+        padding: 20px;
+    }
 
-        h2 {
-            margin-top: 0;
-            font-size: 24px;
-            letter-spacing: -0.5px;
-        }
+    .header-info {
+        width: 100%;
+        max-width: 400px;
+        margin-bottom: 30px;
+        text-align: left;
+        border-left: 2px solid #333;
+        padding-left: 15px;
+    }
 
-        p {
-            color: var(--text-muted);
-            font-size: 14px;
-            line-height: 1.5;
-            margin-bottom: 25px;
-        }
+    .track-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 5px;
+        letter-spacing: -0.5px;
+    }
 
-        audio {
-            width: 100%;
-            margin-bottom: 20px;
-            border-radius: 8px;
-        }
+    .track-artist {
+        font-size: 14px;
+        color: #666;
+        font-weight: 400;
+    }
 
-        button {
-            width: 100%;
-            padding: 14px;
-            font-size: 16px;
-            font-weight: 600;
-            color: white;
-            background-color: var(--btn-bg);
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.2s ease, transform 0.1s ease;
-        }
+    .warning-label {
+        font-size: 10px;
+        color: #333;
+        margin-top: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
 
-        button:active {
-            transform: scale(0.98);
-        }
+    /* Visualizer Area */
+    .visualizer-box {
+        width: 200px;
+        height: 200px;
+        background: #111;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 40px;
+        box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        border: 1px solid #222;
+        position: relative;
+    }
 
-        #status {
-            margin-top: 25px;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 14px;
-            background-color: rgba(255, 255, 255, 0.05);
-            color: var(--text-muted);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
+    .visualizer-box::after {
+        content: "DOUBLE P RECORDS";
+        position: absolute;
+        bottom: 20px;
+        font-size: 8px;
+        color: #333;
+        letter-spacing: 2px;
+    }
 
-        .status-active {
-            color: var(--accent-green) !important;
-            border-color: var(--accent-green) !important;
-            background-color: rgba(16, 185, 129, 0.1) !important;
-        }
+    .audio-wave-icon {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 40px;
+    }
 
-        .status-stopped {
-            color: var(--accent-red) !important;
-            border-color: var(--accent-red) !important;
-            background-color: rgba(239, 68, 68, 0.1) !important;
-        }
-    </style>
+    .audio-wave-icon span {
+        display: block;
+        width: 4px;
+        background: #333;
+        border-radius: 2px;
+        animation: none;
+    }
+
+    .audio-wave-icon.active span {
+        background: #fff;
+        animation: wave 0.5s infinite ease-in-out alternate;
+    }
+
+    .audio-wave-icon.active span:nth-child(1) { height: 10px; animation-delay: 0.1s; }
+    .audio-wave-icon.active span:nth-child(2) { height: 20px; animation-delay: 0.2s; }
+    .audio-wave-icon.active span:nth-child(3) { height: 30px; animation-delay: 0.3s; }
+    .audio-wave-icon.active span:nth-child(4) { height: 20px; animation-delay: 0.4s; }
+    .audio-wave-icon.active span:nth-child(5) { height: 10px; animation-delay: 0.5s; }
+
+    @keyframes wave {
+        0% { transform: scaleY(0.5); opacity: 0.5; }
+        100% { transform: scaleY(1.5); opacity: 1; }
+    }
+
+    /* Controls */
+    .controls {
+        display: flex;
+        gap: 30px;
+        align-items: center;
+    }
+
+    .control-btn {
+        background: none;
+        border: none;
+        color: #333;
+        font-size: 20px;
+        cursor: not-allowed;
+        transition: color 0.2s;
+    }
+
+    .play-pause-btn {
+        width: 60px;
+        height: 60px;
+        background: #fff;
+        color: #000;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        cursor: pointer;
+        box-shadow: 0 0 20px rgba(255,255,255,0.1);
+    }
+
+    .play-pause-btn:hover {
+        transform: scale(1.05);
+    }
+
+    /* Fake Log Terminal */
+    .log-terminal {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 150px;
+        background: linear-gradient(to top, #000 0%, transparent 100%);
+        z-index: 100;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 20px;
+        font-family: 'Courier New', monospace;
+        font-size: 10px;
+        color: #333;
+        text-align: left;
+    }
+
+    .log-entry {
+        margin-bottom: 2px;
+        opacity: 0.7;
+    }
+
+    .log-entry.error {
+        color: var(--alert);
+        font-weight: bold;
+    }
+
+    /* Footer Branding */
+    .footer-brand {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        font-size: 10px;
+        color: #222;
+        z-index: 10;
+        pointer-events: none;
+    }
+
+    .status-badge {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #111;
+        border: 1px solid #333;
+        color: #333;
+        padding: 5px 10px;
+        font-size: 10px;
+        border-radius: 4px;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .status-dot {
+        width: 6px;
+        height: 6px;
+        background: #333;
+        border-radius: 50%;
+    }
+
+    .status-dot.active {
+        background: #00ff00;
+        box-shadow: 0 0 5px #00ff00;
+    }
+</style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Secure Media Portal</h2>
-    <p>The session will instantly terminate if you move your mouse, type, touch the screen, shake the device, or leave the browser window.</p>
-    
-    <audio id="myAudio" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" controls></audio>
-    
-    <button id="startBtn">Initialize Secure Session</button>
-    
-    <div id="status">Status: Awaiting Initialization</div>
+<!-- Security Layers -->
+<div class="watermark-overlay"></div>
+<div class="confidential-stamp">CONFIDENTIAL // EMPLOYEE ONLY</div>
+
+<div class="status-badge">
+    <div class="status-dot" id="security-status"></div>
+    <span id="security-text">SECURE CONNECTION</span>
 </div>
 
+<div class="player-container">
+    <div class="header-info">
+        <div class="track-title">Nina - Peso Pluma</div>
+        <div class="track-artist">Double P Records / Disco.ac</div>
+        <div class="warning-label">
+            <i class="fa-solid fa-lock"></i> Protected Content // No Recording Allowed
+        </div>
+    </div>
+
+    <div class="visualizer-box">
+        <div class="audio-wave-icon" id="wave-visualizer">
+            <span></span><span></span><span></span><span></span><span></span>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="control-btn"><i class="fa-solid fa-backward-step"></i></button>
+        <button class="play-pause-btn" id="play-btn">
+            <i class="fa-solid fa-play" id="play-icon"></i>
+        </button>
+        <button class="control-btn"><i class="fa-solid fa-forward-step"></i></button>
+    </div>
+</div>
+
+<div class="log-terminal" id="log-terminal">
+    <!-- Logs generated by JS -->
+</div>
+
+<div class="footer-brand">
+    disco.ac // Double P Records // Internal Use Only
+</div>
+
+<!-- Hidden Audio Element -->
+<audio id="audio-player" preload="auto" crossorigin="anonymous">
+    <source src="https://github.com/projectsdoublep-disco-ac/projectsdoublep-disco-ac.github.io/raw/refs/heads/main/@AudioFactoryBot%20(4).mp3" type="audio/mpeg">
+</audio>
+
 <script>
-    const audio = document.getElementById('myAudio');
-    const startBtn = document.getElementById('startBtn');
-    const statusDiv = document.getElementById('status');
+    // --- Security & Anti-Tamper Configuration ---
+    const audio = document.getElementById('audio-player');
+    const playBtn = document.getElementById('play-btn');
+    const playIcon = document.getElementById('play-icon');
+    const waveVisualizer = document.getElementById('wave-visualizer');
+    const logTerminal = document.getElementById('log-terminal');
+    const securityStatus = document.getElementById('security-status');
+    const securityText = document.getElementById('security-text');
+
+    let isPlaying = false;
+    let audioContext = null;
+    let sourceNode = null;
+    let analyser = null;
+
+    // --- Fake Log Generator ---
+    const logMessages = [
+        "Initializing secure stream...",
+        "Verifying user credentials...",
+        "Access granted: Employee ID [REDACTED]",
+        "Loading asset: Nina - Peso Pluma",
+        "DRM Check: Passed",
+        "Watermark injection: Active",
+        "Monitoring for screen capture APIs...",
+        "Connection secured via disco.ac private network"
+    ];
+
+    function addLog(msg, isError = false) {
+        const div = document.createElement('div');
+        div.className = 'log-entry' + (isError ? ' error' : '');
+        const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+        div.textContent = `[${time}] ${msg}`;
+        logTerminal.appendChild(div);
+        if (logTerminal.children > 8) {
+            logTerminal.removeChild(logTerminal.firstChild);
+        }
+    }
+
+    // Initialize logs
+    logMessages.forEach(msg => setTimeout(() => addLog(msg), Math.random() * 2000));
+
+    // --- Security Measures ---
     
-    let mediaRecorder = null;
-    let streamInstance = null;
-    let isSessionActive = false;
+    // Disable Right Click
+    document.addEventListener('contextmenu', event => {
+        event.preventDefault();
+        addLog("Unauthorized context menu attempt detected.", true);
+        stopAudio();
+    });
 
-    // Configuration threshold for phone movement (tweak if too sensitive/loose)
-    const MOVEMENT_THRESHOLD = 1.5; 
-
-    // Unified function to terminate everything safely
-    function triggerLockdown(reason) {
-        if (!isSessionActive) return;
-        
-        isSessionActive = false;
-
-        // 1. Force halt audio playback
-        audio.pause();
-        
-        // 2. Force stop mic recording
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-            mediaRecorder.stop();
+    // Disable Key Shortcuts (Ctrl+C, Ctrl+U, etc)
+    document.addEventListener('keydown', event => {
+        if (
+            event.ctrlKey && (event.key === 'c' || event.key === 'u' || event.key === 's') ||
+            event.key === 'F12' ||
+            event.ctrlKey && event.shiftKey && event.key === 'I'
+        ) {
+            event.preventDefault();
+            addLog(`Key interception: ${event.key}`, true);
+            stopAudio();
         }
+    });
 
-        // 3. Kill the hardware mic stream completely (turns off the device recording light)
-        if (streamInstance) {
-            streamInstance.getTracks().forEach(track => track.stop());
+    // Disable Touch/Mouse Actions that look like recording attempts
+    document.addEventListener('touchstart', () => {
+        // If they touch the screen while playing, assume they might be recording
+        if(isPlaying) {
+            addLog("Touch interaction detected during playback. Stopping stream.", true);
+            stopAudio();
         }
-        
-        // 4. Update UI Styling
-        statusDiv.innerText = `🚨 SESSION BREACHED: ${reason}`;
-        statusDiv.className = "status-stopped";
-        
-        // Remove tracking to prevent looping triggers
-        removeAllListeners();
+    }, { passive: false });
+
+    // Detect Screen Recording (Basic API check)
+    if (navigator.getDisplayMedia) {
+        // This is a simulation of detection logic
+        // Real detection is hard without DRM, but we simulate the "Leaked" vibe
+        addLog("Screen sharing API monitored.");
     }
 
-    // Requests hardware access and fires up the protection loop
-    async function startSecureSession() {
-        // Handle iOS WebKit requirement for explicit permission requests for Device Orientation
-        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-            try {
-                const permissionState = await DeviceOrientationEvent.requestPermission();
-                if (permissionState !== 'granted') {
-                    alert("Motion sensors are required to run this session on mobile.");
-                    return;
-                }
-            } catch (error) {
-                console.error("Sensor permission denied", error);
+    function stopAudio() {
+        if (audio) {
+            audio.pause();
+            audio.currentTime = 0;
+        }
+        isPlaying = false;
+        updateUI();
+        securityStatus.classList.remove('active');
+        securityText.textContent = "STREAM INTERRUPTED";
+        securityText.style.color = "#b00000";
+    }
+
+    // --- Audio Logic ---
+
+    function initAudioContext() {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            sourceNode = audioContext.createMediaElementSource(audio);
+            analyser = audioContext.createAnalyser();
+            sourceNode.connect(analyser);
+            analyser.connect(audioContext.destination);
+            analyser.fftSize = 256;
+        }
+    }
+
+    function updateUI() {
+        if (isPlaying) {
+            playIcon.classList.remove('fa-play');
+            playIcon.classList.add('fa-pause');
+            waveVisualizer.classList.add('active');
+            securityStatus.classList.add('active');
+            securityText.textContent = "STREAMING SECURELY";
+            securityText.style.color = "#00ff00";
+            addLog("Audio stream active.");
+        } else {
+            playIcon.classList.remove('fa-pause');
+            playIcon.classList.add('fa-play');
+            waveVisualizer.classList.remove('active');
+        }
+    }
+
+    playBtn.addEventListener('click', () => {
+        if (isPlaying) {
+            audio.pause();
+            isPlaying = false;
+            updateUI();
+            addLog("Playback paused by user.");
+        } else {
+            // Browser policy requires user interaction first
+            initAudioContext();
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
             }
+
+            audio.play().then(() => {
+                isPlaying = true;
+                updateUI();
+                addLog("Playback started.");
+            }).catch(e => {
+                addLog("Playback failed: " + e.message, true);
+            });
         }
+    });
 
-        try {
-            // Request system microphone access
-            streamInstance = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(streamInstance);
-            
-            // Start recording and audio playback simultaneously 
-            mediaRecorder.start();
-            audio.play();
-            
-            isSessionActive = true;
-            statusDiv.innerText = "🔒 Session Secure. Do not move.";
-            statusDiv.className = "status-active";
-            
-            addAllListeners();
-        } catch (err) {
-            alert("Microphone permission must be accepted to start recording.");
-            console.error(err);
-        }
-    }
+    audio.addEventListener('ended', () => {
+        isPlaying = false;
+        updateUI();
+        addLog("Stream ended.");
+    });
 
-    // --- EVENT LISTENERS PACK ---
+    audio.addEventListener('error', (e) => {
+        addLog("Audio source error. File may be removed.", true);
+        stopAudio();
+    });
 
-    // Desktop Triggers
-    const onMouseMove = () => triggerLockdown("Mouse Movement Detected");
-    const onKeyDown = () => triggerLockdown("Keystroke Detected");
+    // Prevent default drag behaviors
+    window.ondragstart = function() { return false; }
 
-    // Mobile Triggers
-    const onTouchMove = () => triggerLockdown("Screen Interaction Detected");
-    const onDeviceMove = (event) => {
-        const { beta, gamma } = event;
-        if (beta === null || gamma === null) return;
-
-        // Triggers lockdown if tilted past the threshold values
-        if (Math.abs(beta) > MOVEMENT_THRESHOLD || Math.abs(gamma) > MOVEMENT_THRESHOLD) {
-            triggerLockdown("Physical Device Movement Detected");
-        }
-    };
-
-    // Universal Exit Trigger (Tab changing, phone locking, minimize app)
-    const onVisibilityChange = () => {
-        if (document.hidden) {
-            triggerLockdown("App Minimization/Tab Switch Detected");
-        }
-    };
-
-    function addAllListeners() {
-        // Enforce a subtle 800ms delay window so the initial button tap doesn't immediately self-trigger
-        setTimeout(() => {
-            if (!isSessionActive) return;
-            
-            // Desktop registers
-            window.addEventListener('mousemove', onMouseMove);
-            window.addEventListener('keydown', onKeyDown);
-            
-            // Mobile registers
-            window.addEventListener('touchmove', onTouchMove);
-            window.addEventListener('deviceorientation', onDeviceMove);
-            
-            // System App state registers
-            document.addEventListener('visibilitychange', onVisibilityChange);
-        }, 800);
-    }
-
-    function removeAllListeners() {
-        window.removeEventListener('mousemove', onMouseMove);
-        window.removeEventListener('keydown', onKeyDown);
-        window.removeEventListener('touchmove', onTouchMove);
-        window.removeEventListener('deviceorientation', onDeviceMove);
-        document.removeEventListener('visibilitychange', onVisibilityChange);
-    }
-
-    startBtn.addEventListener('click', startSecureSession);
 </script>
-
 </body>
 </html>
