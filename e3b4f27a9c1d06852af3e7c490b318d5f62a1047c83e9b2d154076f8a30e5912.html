@@ -3,515 +3,241 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Audio & Video Player Widget</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Universal Secure Media Session</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
-            --bg-color: #ffffff;
-            --text-main: #111827;
-            --text-muted: #6b7280;
-            --accent: #000000;
-            --wave-played: #2c3135;
-            --wave-remaining: #d1d5db;
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --btn-bg: #3b82f6;
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
-        .tab-nav { display: flex; background-color: #f3f4f6; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 100; width: 100%; transition: max-height 0.3s ease, opacity 0.3s ease; max-height: 60px; overflow: hidden; opacity: 1; }
-        .tab-nav.hidden-tabs { max-height: 0 !important; border-bottom: none; opacity: 0; pointer-events: none; }
-        .tab-btn { flex: 1; padding: 16px 12px; text-align: center; font-size: 15px; font-weight: 600; color: var(--text-muted); background: none; border: none; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s ease; display: flex; justify-content: center; align-items: center; gap: 8px; }
-        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background-color: #ffffff; }
-        .tab-panel { display: none; width: 100%; flex: 1; }
-        .tab-panel.active { display: flex; flex-direction: column; }
-        .manager-view { padding: 24px; max-width: 600px; width: 100%; margin: 0 auto; }
-        .dashboard-title { font-size: 22px; font-weight: 700; margin-bottom: 20px; }
-        .upload-zone { border: 2px dashed #d1d5db; border-radius: 12px; padding: 30px 20px; text-align: center; cursor: pointer; transition: all 0.2s ease; margin-bottom: 16px; background-color: #fafafa; }
-        .upload-zone:hover { border-color: var(--accent); background-color: #f3f4f6; }
-        .upload-zone i { font-size: 36px; color: var(--text-muted); margin-bottom: 12px; }
-        .upload-zone p { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
-        #file-input { display: none; }
 
-        .divider-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-        .divider-row hr { flex: 1; border: none; border-top: 1px solid #e5e7eb; }
-        .divider-row span { font-size: 12px; color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
 
-        .url-input-row { display: flex; gap: 8px; margin-bottom: 24px; }
-        .url-input-row input { flex: 1; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; outline: none; }
-        .url-input-row input:focus { border-color: var(--accent); }
-        .url-input-row button { padding: 12px 16px; background-color: var(--accent); color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; white-space: nowrap; }
-        .url-type-select { display: flex; gap: 8px; margin-bottom: 16px; }
-        .url-type-select label { font-size: 12px; font-weight: 600; color: #4b5563; display: flex; align-items: center; gap: 5px; cursor: pointer; }
-        .url-type-select input[type=radio] { accent-color: var(--accent); }
+        .container {
+            width: 100%;
+            max-width: 480px;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
 
-        .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #4b5563; }
-        .form-group input { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; outline: none; }
-        .form-group input:focus { border-color: var(--accent); }
-        .primary-btn { width: 100%; background-color: var(--accent); color: #ffffff; border: none; padding: 14px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; }
-        .track-list-container { margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 20px; }
-        .track-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-radius: 8px; background-color: #f9fafb; margin-bottom: 8px; cursor: pointer; border: 1px solid transparent; }
-        .track-item.active { background-color: #f3f4f6; border-color: var(--accent); }
-        .track-item-info { flex: 1; overflow: hidden; }
-        .track-item-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .track-item-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-        .track-actions { display: flex; gap: 4px; }
-        .action-btn { background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 14px; padding: 6px; }
-        .action-btn.edit-btn:hover { color: #2563eb; }
-        .action-btn.delete-btn:hover { color: #dc2626; }
-        .player-view { width: 100%; max-width: 430px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; align-items: center; background-color: #ffffff; }
-        .top-bar { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .top-bar i { font-size: 20px; color: var(--accent); cursor: pointer; padding: 10px; }
-        .top-bar i.fa-chevron-down { transition: transform 0.3s ease; }
-        .top-bar i.fa-chevron-down.tabs-are-hidden { transform: rotate(180deg); }
-        .track-info { font-size: 17px; font-weight: 400; color: #2c2c2c; margin-bottom: 24px; text-align: center; letter-spacing: -0.3px; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .stage-viewport-container { width: 100%; aspect-ratio: 1 / 1; margin-bottom: 30px; position: relative; }
-        .album-art-container { width: 100%; height: 100%; background: linear-gradient(135deg, #eef1f4, #e0e5ec); border-radius: 24px; display: flex; justify-content: center; align-items: center; box-shadow: 0 20px 35px -5px rgba(0,0,0,0.35), 0 10px 15px -5px rgba(0,0,0,0.2); }
-        .native-video-render { width: 100%; height: 100%; object-fit: cover; border-radius: 24px; background-color: #000; box-shadow: 0 20px 35px -5px rgba(0,0,0,0.35); display: none; }
-        .audio-wave-icon { display: flex; align-items: center; gap: 3px; }
-        .audio-wave-icon span { display: block; width: 3px; background-color: #4a5568; border-radius: 2px; }
-        .audio-wave-icon span:nth-child(1), .audio-wave-icon span:nth-child(5) { height: 12px; }
-        .audio-wave-icon span:nth-child(2), .audio-wave-icon span:nth-child(4) { height: 18px; }
-        .audio-wave-icon span:nth-child(3) { height: 24px; }
-        .controls { display: flex; align-items: center; justify-content: center; gap: 28px; margin-bottom: 24px; }
-        .control-btn { background: none; border: none; cursor: pointer; color: var(--accent); display: flex; align-items: center; justify-content: center; }
-        .control-btn svg { width: 20px; height: 20px; fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-        .play-pause-btn { width: 52px; height: 52px; background-color: var(--accent); color: #ffffff; border-radius: 50%; font-size: 16px; }
-        .time-badge { background-color: #4e5359; color: #ffffff; font-size: 13px; font-weight: 500; padding: 4px 10px; border-radius: 4px; font-family: monospace; margin-bottom: 24px; }
-        .time-badge span { opacity: 0.5; }
-        .waveform-scroll-window { width: 100%; height: 50px; overflow: hidden; position: relative; cursor: pointer; }
-        .waveform-container { display: flex; align-items: center; gap: 2px; height: 100%; width: 100%; }
-        .wave-bar { flex: 1; height: 10px; border-radius: 1px; pointer-events: none; }
-        .wave-bar.played { background-color: var(--wave-played); }
-        .wave-bar.remaining { background-color: var(--wave-remaining); }
+        h2 {
+            margin-top: 0;
+            font-size: 24px;
+            letter-spacing: -0.5px;
+        }
+
+        p {
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 25px;
+        }
+
+        audio {
+            width: 100%;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            background-color: var(--btn-bg);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.1s ease;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        #status {
+            margin-top: 25px;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-active {
+            color: var(--accent-green) !important;
+            border-color: var(--accent-green) !important;
+            background-color: rgba(16, 185, 129, 0.1) !important;
+        }
+
+        .status-stopped {
+            color: var(--accent-red) !important;
+            border-color: var(--accent-red) !important;
+            background-color: rgba(239, 68, 68, 0.1) !important;
+        }
     </style>
 </head>
 <body>
 
-<div class="tab-nav" id="main-tab-navigation">
-    <button class="tab-btn active" onclick="switchPanelTab('manager')">
-        <i class="fa-solid fa-folder-open"></i> 1. Select Asset
-    </button>
-    <button class="tab-btn" onclick="switchPanelTab('player')">
-        <i class="fa-solid fa-compact-disc"></i> 2. Player Screen
-    </button>
+<div class="container">
+    <h2>Secure Media Portal</h2>
+    <p>The session will instantly terminate if you move your mouse, type, touch the screen, shake the device, or leave the browser window.</p>
+    
+    <audio id="myAudio" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" controls></audio>
+    
+    <button id="startBtn">Initialize Secure Session</button>
+    
+    <div id="status">Status: Awaiting Initialization</div>
 </div>
-
-<div id="panel-manager" class="tab-panel active">
-    <div class="manager-view">
-        <div class="dashboard-title">Select & Manage Assets</div>
-
-        <div class="upload-zone" onclick="document.getElementById('file-input').click()">
-            <i class="fa-solid fa-photo-film"></i>
-            <p>Click to upload <strong>MP3 Audio</strong> or <strong>MP4 Video</strong> tracks</p>
-            <input type="file" id="file-input" accept="audio/*,video/mp4">
-        </div>
-
-        <div class="divider-row">
-            <hr><span>OR LOAD FROM URL</span><hr>
-        </div>
-
-        <div class="url-type-select">
-            <label><input type="radio" name="url-type" value="audio" checked> Audio</label>
-            <label><input type="radio" name="url-type" value="video"> Video (MP4)</label>
-        </div>
-
-        <div class="url-input-row">
-            <input type="text" id="url-link-input" placeholder="https://example.com/track.mp3">
-            <button onclick="handleURLLoad()"><i class="fa-solid fa-link"></i> Load</button>
-        </div>
-
-        <input type="hidden" id="edit-index" value="-1">
-
-        <div class="form-group">
-            <label id="form-action-label" for="track-name-input">Track Identity Title Text</label>
-            <input type="text" id="track-name-input" placeholder="Configure displayed text configuration override">
-        </div>
-
-        <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div>
-                <label for="fake-min-input">Fake Duration (Min)</label>
-                <input type="number" id="fake-min-input" placeholder="e.g. 2" min="0">
-            </div>
-            <div>
-                <label for="fake-sec-input">Fake Duration (Sec)</label>
-                <input type="number" id="fake-sec-input" placeholder="e.g. 21" min="0" max="59">
-            </div>
-        </div>
-
-        <button class="primary-btn" id="save-track-btn">Apply Asset Metadata Modifications</button>
-
-        <div class="track-list-container">
-            <div id="track-list-target"></div>
-        </div>
-    </div>
-</div>
-
-<div id="panel-player" class="tab-panel">
-    <div class="player-view">
-        <div class="top-bar">
-            <i class="fa-solid fa-chevron-down" id="hide-tabs-trigger"></i>
-            <i class="fa-solid fa-ellipsis-vertical"></i>
-        </div>
-        <div class="track-info" id="player-track-title">No track loaded...</div>
-        <div class="stage-viewport-container">
-            <div class="album-art-container" id="dom-audio-placeholder-cover">
-                <div class="audio-wave-icon">
-                    <span></span><span></span><span></span><span></span><span></span>
-                </div>
-            </div>
-            <video class="native-video-render" id="native-video-node" playsinline></video>
-        </div>
-        <div class="controls">
-            <button class="control-btn" id="prev-btn">
-                <svg viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="4" x2="5" y2="20"></line></svg>
-            </button>
-            <button class="control-btn play-pause-btn" id="play-btn">
-                <i class="fa-solid fa-play" id="play-icon"></i>
-            </button>
-            <button class="control-btn" id="next-btn">
-                <svg viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="4" x2="19" y2="20"></line></svg>
-            </button>
-        </div>
-        <div class="time-badge" id="player-time-badge">00:00 <span>| 00:00</span></div>
-        <div class="waveform-scroll-window" id="waveform-window">
-            <div class="waveform-container" id="waveform-track-timeline"></div>
-        </div>
-    </div>
-</div>
-
-<audio id="native-audio-node" preload="auto"></audio>
 
 <script>
-    let tracks = [
-        { name: "4. ONDEADON - Tito Double P", url: "", type: "audio", isPlaceholder: true, placeholderDuration: 141, fakeDuration: 141 },
-        { name: "1. Dembow Belico - Luis R Conriquez", url: "", type: "audio", isPlaceholder: true, placeholderDuration: 185, fakeDuration: 185 },
-        { name: "2. AMG - Peso Pluma x Natanael Cano", url: "", type: "audio", isPlaceholder: true, placeholderDuration: 164, fakeDuration: 164 }
-    ];
+    const audio = document.getElementById('myAudio');
+    const startBtn = document.getElementById('startBtn');
+    const statusDiv = document.getElementById('status');
+    
+    let mediaRecorder = null;
+    let streamInstance = null;
+    let isSessionActive = false;
 
-    let currentTrackIndex = 0;
-    const barResolutionDensity = 75;
-    let waveformHeightsMap = [];
-    let mockPlaceholderTime = 73;
-    let activePlaybackEngineNode = null;
+    // Configuration threshold for phone movement (tweak if too sensitive/loose)
+    const MOVEMENT_THRESHOLD = 1.5; 
 
-    const audioEngineNode = document.getElementById('native-audio-node');
-    const videoEngineNode = document.getElementById('native-video-node');
-    const audioCoverPlaceholder = document.getElementById('dom-audio-placeholder-cover');
-    const playerTrackTitle = document.getElementById('player-track-title');
-    const playerTimeBadge = document.getElementById('player-time-badge');
-    const playIcon = document.getElementById('play-icon');
-    const playBtn = document.getElementById('play-btn');
-    const prevBtn = document.getElementById('prev-btn');
-    const nextBtn = document.getElementById('next-btn');
-    const waveformTimeline = document.getElementById('waveform-track-timeline');
-    const waveformWindow = document.getElementById('waveform-window');
-    const trackListTarget = document.getElementById('track-list-target');
-    const trackNameInput = document.getElementById('track-name-input');
-    const fakeMinInput = document.getElementById('fake-min-input');
-    const fakeSecInput = document.getElementById('fake-sec-input');
-    const saveTrackBtn = document.getElementById('save-track-btn');
-    const editIndexInput = document.getElementById('edit-index');
-    const formActionLabel = document.getElementById('form-action-label');
-    const fileInput = document.getElementById('file-input');
-    const urlLinkInput = document.getElementById('url-link-input');
+    // Unified function to terminate everything safely
+    function triggerLockdown(reason) {
+        if (!isSessionActive) return;
+        
+        isSessionActive = false;
 
-    window.handleURLLoad = function() {
-        const rawUrl = urlLinkInput.value.trim();
-        if (!rawUrl) { alert("Please enter a URL."); return; }
-
-        let url;
-        try { url = new URL(rawUrl); } catch(e) { alert("Invalid URL — make sure it starts with https://"); return; }
-
-        const selectedType = document.querySelector('input[name="url-type"]:checked').value;
-        const guessedName = decodeURIComponent(url.pathname.split('/').pop().replace(/\.[^/.]+$/, '') || 'Untitled Track');
-
-        const newTrack = {
-            name: guessedName,
-            url: rawUrl,
-            type: selectedType,
-            isPlaceholder: false,
-            fakeDuration: null,
-            isURL: true
-        };
-
-        tracks.push(newTrack);
-        urlLinkInput.value = "";
-        renderDashboardPlaylist();
-        switchPanelTab('player');
-        loadTargetTrackInstance(tracks.length - 1, true);
-    };
-
-    urlLinkInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleURLLoad(); });
-
-    function checkMobileDeviceContext() {
-        return (window.innerWidth <= 768 || /Mobi|Android|iPhone/i.test(navigator.userAgent));
-    }
-
-    window.switchPanelTab = function(targetPanel) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-        if (targetPanel === 'manager') {
-            document.querySelectorAll('.tab-btn')[0].classList.add('active');
-            document.getElementById('panel-manager').classList.add('active');
-        } else {
-            document.querySelectorAll('.tab-btn')[1].classList.add('active');
-            document.getElementById('panel-player').classList.add('active');
-            loadTargetTrackInstance(currentTrackIndex, false);
+        // 1. Force halt audio playback
+        audio.pause();
+        
+        // 2. Force stop mic recording
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
         }
-    };
 
-    function initializeApplication() {
-        generateWaveformTemplateProfile();
-        renderDashboardPlaylist();
-        loadTargetTrackInstance(currentTrackIndex, false);
-        setupEventInteractions();
-        window.addEventListener('resize', () => loadTargetTrackInstance(currentTrackIndex, false));
-        const chevronTrigger = document.getElementById('hide-tabs-trigger');
-        const tabNavigationMenu = document.getElementById('main-tab-navigation');
-        chevronTrigger.addEventListener('click', () => {
-            tabNavigationMenu.classList.toggle('hidden-tabs');
-            chevronTrigger.classList.toggle('tabs-are-hidden');
-        });
-    }
-
-    function generateWaveformTemplateProfile() {
-        waveformHeightsMap = [];
-        for (let i = 0; i < barResolutionDensity; i++) {
-            let h = 14 + Math.sin(i * 0.22) * 12 + Math.cos(i * 0.45) * 8;
-            waveformHeightsMap.push(Math.max(8, Math.min(46, h)));
+        // 3. Kill the hardware mic stream completely (turns off the device recording light)
+        if (streamInstance) {
+            streamInstance.getTracks().forEach(track => track.stop());
         }
+        
+        // 4. Update UI Styling
+        statusDiv.innerText = `🚨 SESSION BREACHED: ${reason}`;
+        statusDiv.className = "status-stopped";
+        
+        // Remove tracking to prevent looping triggers
+        removeAllListeners();
     }
 
-    function formatTimeMetrics(totalSeconds) {
-        if (isNaN(totalSeconds) || totalSeconds < 0) return "00:00";
-        const mins = Math.floor(totalSeconds / 60);
-        const secs = Math.floor(totalSeconds % 60);
-        return `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-    }
-
-    function loadTargetTrackInstance(index, triggerPlayback = false) {
-        if (index < 0 || index >= tracks.length) return;
-        audioEngineNode.pause();
-        videoEngineNode.pause();
-        currentTrackIndex = index;
-        const track = tracks[currentTrackIndex];
-        playerTrackTitle.innerText = track.name;
-
-        if (track.type === "video") {
-            activePlaybackEngineNode = videoEngineNode;
-            audioCoverPlaceholder.style.display = "none";
-            videoEngineNode.style.display = "block";
-            videoEngineNode.src = track.url;
-            videoEngineNode.load();
-            videoEngineNode.currentTime = 0;
-            videoEngineNode.onloadedmetadata = () => calculateAndSyncFakeProgress();
-        } else {
-            activePlaybackEngineNode = audioEngineNode;
-            audioCoverPlaceholder.style.display = "flex";
-            videoEngineNode.style.display = "none";
-            if (track.isPlaceholder) {
-                audioEngineNode.src = "";
-                updateWaveformScrubView(mockPlaceholderTime, track.fakeDuration || track.placeholderDuration);
-            } else {
-                audioEngineNode.src = track.url;
-                audioEngineNode.load();
-                audioEngineNode.currentTime = 0;
-                audioEngineNode.onloadedmetadata = () => calculateAndSyncFakeProgress();
+    // Requests hardware access and fires up the protection loop
+    async function startSecureSession() {
+        // Handle iOS WebKit requirement for explicit permission requests for Device Orientation
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            try {
+                const permissionState = await DeviceOrientationEvent.requestPermission();
+                if (permissionState !== 'granted') {
+                    alert("Motion sensors are required to run this session on mobile.");
+                    return;
+                }
+            } catch (error) {
+                console.error("Sensor permission denied", error);
             }
         }
 
-        if (triggerPlayback && activePlaybackEngineNode && !track.isPlaceholder) {
-            activePlaybackEngineNode.play().catch(e => console.log("Playback deferred:", e));
-        }
-
-        updatePlayPauseButtonUIState();
-        renderDashboardPlaylist();
-    }
-
-    function calculateAndSyncFakeProgress() {
-        const track = tracks[currentTrackIndex];
-        if (!activePlaybackEngineNode || track.isPlaceholder) return;
-        const nativeCurrent = activePlaybackEngineNode.currentTime;
-        const nativeDuration = activePlaybackEngineNode.duration || 1;
-        const targetFakeMax = track.fakeDuration || nativeDuration;
-        const computedFakeCurrentTime = (nativeCurrent / nativeDuration) * targetFakeMax;
-        updateWaveformScrubView(computedFakeCurrentTime, targetFakeMax);
-    }
-
-    function updateWaveformScrubView(currentSeconds, totalDuration) {
-        totalDuration = totalDuration || 120;
-        const progressRatio = Math.min(1, Math.max(0, currentSeconds / totalDuration));
-        const splitActiveIndex = Math.floor(progressRatio * barResolutionDensity);
-        playerTimeBadge.innerHTML = `${formatTimeMetrics(currentSeconds)} <span>| ${formatTimeMetrics(totalDuration)}</span>`;
-        waveformTimeline.innerHTML = '';
-        for (let i = 0; i < barResolutionDensity; i++) {
-            const bar = document.createElement('div');
-            bar.classList.add('wave-bar', i <= splitActiveIndex ? 'played' : 'remaining');
-            bar.style.height = `${waveformHeightsMap[i]}px`;
-            waveformTimeline.appendChild(bar);
+        try {
+            // Request system microphone access
+            streamInstance = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(streamInstance);
+            
+            // Start recording and audio playback simultaneously 
+            mediaRecorder.start();
+            audio.play();
+            
+            isSessionActive = true;
+            statusDiv.innerText = "🔒 Session Secure. Do not move.";
+            statusDiv.className = "status-active";
+            
+            addAllListeners();
+        } catch (err) {
+            alert("Microphone permission must be accepted to start recording.");
+            console.error(err);
         }
     }
 
-    function updatePlayPauseButtonUIState() {
-        if (activePlaybackEngineNode && !activePlaybackEngineNode.paused && activePlaybackEngineNode.src !== "") {
-            playIcon.className = "fa-solid fa-pause";
-        } else {
-            playIcon.className = "fa-solid fa-play";
+    // --- EVENT LISTENERS PACK ---
+
+    // Desktop Triggers
+    const onMouseMove = () => triggerLockdown("Mouse Movement Detected");
+    const onKeyDown = () => triggerLockdown("Keystroke Detected");
+
+    // Mobile Triggers
+    const onTouchMove = () => triggerLockdown("Screen Interaction Detected");
+    const onDeviceMove = (event) => {
+        const { beta, gamma } = event;
+        if (beta === null || gamma === null) return;
+
+        // Triggers lockdown if tilted past the threshold values
+        if (Math.abs(beta) > MOVEMENT_THRESHOLD || Math.abs(gamma) > MOVEMENT_THRESHOLD) {
+            triggerLockdown("Physical Device Movement Detected");
         }
-    }
-
-    function setupEventInteractions() {
-        const syncProgressHandler = () => {
-            if (!tracks[currentTrackIndex].isPlaceholder) calculateAndSyncFakeProgress();
-        };
-        audioEngineNode.addEventListener('timeupdate', syncProgressHandler);
-        videoEngineNode.addEventListener('timeupdate', syncProgressHandler);
-
-        const playStateUIHandler = () => updatePlayPauseButtonUIState();
-        audioEngineNode.addEventListener('play', playStateUIHandler);
-        audioEngineNode.addEventListener('pause', playStateUIHandler);
-        videoEngineNode.addEventListener('play', playStateUIHandler);
-        videoEngineNode.addEventListener('pause', playStateUIHandler);
-
-        const trackEndRouteHandler = () => executeNavigationStep(1);
-        audioEngineNode.addEventListener('ended', trackEndRouteHandler);
-        videoEngineNode.addEventListener('ended', trackEndRouteHandler);
-
-        playBtn.addEventListener('click', () => {
-            const track = tracks[currentTrackIndex];
-            if (track.isPlaceholder) { alert("This placeholder requires a file upload or URL first."); return; }
-            if (activePlaybackEngineNode) {
-                activePlaybackEngineNode.paused ? activePlaybackEngineNode.play() : activePlaybackEngineNode.pause();
-                updatePlayPauseButtonUIState();
-            }
-        });
-
-        prevBtn.addEventListener('click', () => executeNavigationStep(-1));
-        nextBtn.addEventListener('click', () => executeNavigationStep(1));
-
-        waveformWindow.addEventListener('click', (e) => {
-            const track = tracks[currentTrackIndex];
-            const rect = waveformWindow.getBoundingClientRect();
-            const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-            if (track.isPlaceholder) {
-                mockPlaceholderTime = Math.floor(ratio * (track.fakeDuration || track.placeholderDuration));
-                updateWaveformScrubView(mockPlaceholderTime, track.fakeDuration || track.placeholderDuration);
-            } else if (activePlaybackEngineNode && activePlaybackEngineNode.duration) {
-                activePlaybackEngineNode.currentTime = ratio * activePlaybackEngineNode.duration;
-                calculateAndSyncFakeProgress();
-            }
-        });
-
-        fileInput.addEventListener('change', (e) => handleImportedFilesList(e.target.files));
-    }
-
-    function executeNavigationStep(direction) {
-        let target = currentTrackIndex + direction;
-        if (target < 0) target = tracks.length - 1;
-        if (target >= tracks.length) target = 0;
-        mockPlaceholderTime = 0;
-        loadTargetTrackInstance(target, true);
-    }
-
-    function handleImportedFilesList(filesList) {
-        if (!filesList || filesList.length === 0) return;
-        const file = filesList[0];
-        let detectedAssetType = "";
-        if (file.type.startsWith('audio/')) detectedAssetType = "audio";
-        else if (file.type === "video/mp4") detectedAssetType = "video";
-        else { alert("Unsupported file type. Please upload MP3 audio or MP4 video only."); return; }
-
-        tracks.push({
-            name: file.name.replace(/\.[^/.]+$/, ""),
-            url: URL.createObjectURL(file),
-            type: detectedAssetType,
-            isPlaceholder: false,
-            fakeDuration: null
-        });
-        renderDashboardPlaylist();
-        switchPanelTab('player');
-        loadTargetTrackInstance(tracks.length - 1, true);
-    }
-
-    function renderDashboardPlaylist() {
-        trackListTarget.innerHTML = '';
-        tracks.forEach((track, idx) => {
-            const item = document.createElement('div');
-            item.className = `track-item ${idx === currentTrackIndex ? 'active' : ''}`;
-            item.addEventListener('click', (e) => {
-                if (e.target.closest('.action-btn')) return;
-                loadTargetTrackInstance(idx, true);
-                switchPanelTab('player');
-            });
-
-            let displayDuration = "";
-            if (track.isPlaceholder) displayDuration = formatTimeMetrics(track.fakeDuration || track.placeholderDuration);
-            else if (track.fakeDuration) displayDuration = formatTimeMetrics(track.fakeDuration) + " (Spoofed)";
-            else displayDuration = "Native Dynamic Time";
-
-            const typeIcon = track.type === 'video' ? '<i class="fa-solid fa-video"></i>' : '<i class="fa-solid fa-music"></i>';
-            const sourceTag = track.isURL ? '<span style="font-size:10px;background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600;">URL</span>' : '';
-
-            item.innerHTML = `
-                <div class="track-item-info">
-                    <div class="track-item-name">${track.name}${sourceTag}</div>
-                    <div class="track-item-meta">
-                        <span style="margin-right:10px;">${typeIcon} ${track.type.toUpperCase()}</span>
-                        <span>${displayDuration}</span>
-                    </div>
-                </div>
-                <div class="track-actions">
-                    <button class="action-btn edit-btn" onclick="openMetadataEditor(event,${idx})"><i class="fa-solid fa-pen-to-square"></i></button>
-                    <button class="action-btn delete-btn" onclick="removeTrackInstance(event,${idx})"><i class="fa-solid fa-trash"></i></button>
-                </div>
-            `;
-            trackListTarget.appendChild(item);
-        });
-    }
-
-    window.openMetadataEditor = function(event, idx) {
-        event.stopPropagation();
-        const t = tracks[idx];
-        trackNameInput.value = t.name;
-        editIndexInput.value = idx;
-        formActionLabel.innerText = `Edit Properties (Track #${idx + 1}):`;
-        fakeMinInput.value = t.fakeDuration ? Math.floor(t.fakeDuration / 60) : "";
-        fakeSecInput.value = t.fakeDuration ? Math.floor(t.fakeDuration % 60) : "";
-        trackNameInput.focus();
     };
 
-    saveTrackBtn.addEventListener('click', () => {
-        const inputVal = trackNameInput.value.trim();
-        const targetIdx = parseInt(editIndexInput.value, 10);
-        if (!inputVal) return;
-        if (targetIdx > -1 && targetIdx < tracks.length) {
-            tracks[targetIdx].name = inputVal;
-            const mins = parseInt(fakeMinInput.value, 10) || 0;
-            const secs = parseInt(fakeSecInput.value, 10) || 0;
-            const calc = (mins * 60) + secs;
-            tracks[targetIdx].fakeDuration = calc > 0 ? calc : null;
-            if (targetIdx === currentTrackIndex) {
-                playerTrackTitle.innerText = inputVal;
-                if (tracks[targetIdx].isPlaceholder) updateWaveformScrubView(mockPlaceholderTime, tracks[targetIdx].fakeDuration || tracks[targetIdx].placeholderDuration);
-                else calculateAndSyncFakeProgress();
-            }
-            editIndexInput.value = "-1";
-            trackNameInput.value = "";
-            fakeMinInput.value = "";
-            fakeSecInput.value = "";
-            formActionLabel.innerText = "Track Title Display Text";
-            renderDashboardPlaylist();
+    // Universal Exit Trigger (Tab changing, phone locking, minimize app)
+    const onVisibilityChange = () => {
+        if (document.hidden) {
+            triggerLockdown("App Minimization/Tab Switch Detected");
         }
-    });
-
-    window.removeTrackInstance = function(event, idx) {
-        event.stopPropagation();
-        if (tracks.length <= 1) return;
-        tracks.splice(idx, 1);
-        if (currentTrackIndex >= tracks.length) currentTrackIndex = tracks.length - 1;
-        loadTargetTrackInstance(currentTrackIndex, false);
     };
 
-    initializeApplication();
+    function addAllListeners() {
+        // Enforce a subtle 800ms delay window so the initial button tap doesn't immediately self-trigger
+        setTimeout(() => {
+            if (!isSessionActive) return;
+            
+            // Desktop registers
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('keydown', onKeyDown);
+            
+            // Mobile registers
+            window.addEventListener('touchmove', onTouchMove);
+            window.addEventListener('deviceorientation', onDeviceMove);
+            
+            // System App state registers
+            document.addEventListener('visibilitychange', onVisibilityChange);
+        }, 800);
+    }
+
+    function removeAllListeners() {
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('keydown', onKeyDown);
+        window.removeEventListener('touchmove', onTouchMove);
+        window.removeEventListener('deviceorientation', onDeviceMove);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+    }
+
+    startBtn.addEventListener('click', startSecureSession);
 </script>
+
 </body>
 </html>
